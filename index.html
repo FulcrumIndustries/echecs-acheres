@@ -43,6 +43,7 @@
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="games.js"></script>
   <style>
     /* Layout: a single screen, no page scroll. Top bar with tabs (Le club, Images, Les parties, Problème).
    Le club uses the painted chess background; everything else stays quiet. */
@@ -628,39 +629,156 @@
       max-height: 100%;
     }
 
-    .picker {
-      display: flex;
-      flex-direction: column;
-      gap: .5rem;
+    .game-picker {
+      display: grid;
+      gap: .35rem;
     }
 
-    .pick {
+    .game-picker > label {
+      color: var(--walnut);
+    }
+
+    .combo {
+      position: relative;
+    }
+
+    .combo-trigger {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: .75rem;
+      text-align: left;
+      font: inherit;
+      color: var(--ink);
+      background: var(--paper-2);
+      border: 2px solid var(--walnut);
+      border-radius: 3px;
+      padding: .55rem .85rem;
+      cursor: pointer;
+      box-shadow: inset 5px 0 0 var(--gold);
+    }
+
+    .combo-trigger:hover {
+      border-color: var(--gold);
+    }
+
+    .combo-trigger[aria-expanded="true"] {
+      border-color: var(--gold);
+    }
+
+    .combo-trigger .combo-main {
+      min-width: 0;
+    }
+
+    .combo-trigger strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      line-height: 1.2;
+      font-weight: 600;
+    }
+
+    .combo-trigger .combo-sub {
+      display: block;
+      font-size: .9rem;
+      color: var(--ink-soft);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .combo-chevron {
+      flex: none;
+      color: var(--walnut);
+      font-size: 1rem;
+      line-height: 1;
+      transition: transform .15s ease;
+    }
+
+    .combo-trigger[aria-expanded="true"] .combo-chevron {
+      transform: rotate(180deg);
+    }
+
+    .combo-panel {
+      position: absolute;
+      z-index: 20;
+      left: 0;
+      right: 0;
+      top: calc(100% + .35rem);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      max-height: min(22rem, 45dvh);
+      background: var(--paper);
+      border: 2px solid var(--walnut);
+      border-radius: 3px;
+      box-shadow: 0 .6rem 1.4rem rgba(31, 42, 34, .18);
+      overflow: hidden;
+    }
+
+    .combo-search {
+      width: 100%;
+      font: inherit;
+      font-size: 1rem;
+      color: var(--ink);
+      background: var(--paper-2);
+      border: 0;
+      border-bottom: 1px solid var(--rule);
+      border-radius: 0;
+      padding: .65rem .85rem;
+    }
+
+    .combo-search::placeholder {
+      color: var(--ink-soft);
+    }
+
+    .combo-list {
+      list-style: none;
+      margin: 0;
+      padding: .25rem;
+      overflow-y: auto;
+    }
+
+    .combo-option {
+      width: 100%;
+      display: grid;
+      gap: .1rem;
       text-align: left;
       font: inherit;
       color: var(--ink);
       background: transparent;
-      border: 2px solid var(--rule);
-      border-radius: 3px;
-      padding: .5rem .9rem;
+      border: 0;
+      border-radius: 2px;
+      padding: .45rem .65rem;
       cursor: pointer;
     }
 
-    .pick strong {
+    .combo-option:hover,
+    .combo-option[data-active="true"] {
+      background: var(--paper-2);
+    }
+
+    .combo-option[aria-selected="true"] {
+      box-shadow: inset 4px 0 0 var(--gold);
+      background: var(--paper-2);
+    }
+
+    .combo-option strong {
       font-family: var(--font-display);
-      font-size: 1.3rem;
+      font-size: 1.1rem;
+      font-weight: 600;
       line-height: 1.2;
     }
 
-    .pick span {
-      display: block;
-      font-size: .95rem;
+    .combo-option span {
+      font-size: .85rem;
       color: var(--ink-soft);
     }
 
-    .pick[aria-pressed="true"] {
-      border-color: var(--walnut);
-      background: var(--paper-2);
-      box-shadow: inset 5px 0 0 var(--gold);
+    .combo-empty {
+      padding: .85rem;
+      color: var(--ink-soft);
+      font-size: .95rem;
     }
 
     .game-info {
@@ -679,7 +797,7 @@
     }
 
     .moves {
-      max-height: 8rem;
+      max-height: min(14rem, 28dvh);
       overflow-y: auto;
       display: flex;
       flex-wrap: wrap;
@@ -808,25 +926,22 @@
         align-self: stretch;
       }
 
-      .picker {
-        flex-direction: row;
+      .combo-trigger {
+        padding: .4rem .7rem;
       }
 
-      .pick {
-        flex: 1 1 0;
-        min-width: 0;
-        padding: .35rem .5rem;
-        text-align: center;
-      }
-
-      .pick strong {
+      .combo-trigger strong {
         font-size: 1.05rem;
       }
 
-      .pick span,
+      .combo-trigger .combo-sub,
       .game-info .meta,
       .moves {
         display: none;
+      }
+
+      .combo-panel {
+        max-height: min(16rem, 40dvh);
       }
 
       .game-info h3 {
@@ -969,7 +1084,24 @@
           </div>
         </div>
         <div class="side">
-          <div class="picker" id="picker" role="group" aria-label="Choisir une partie"></div>
+          <div class="game-picker">
+            <label class="eyebrow" id="gamePickerLabel" for="gameSearch">Choisir une partie</label>
+            <div class="combo" id="gameCombo">
+              <button type="button" class="combo-trigger" id="gameTrigger" aria-haspopup="listbox"
+                aria-expanded="false" aria-controls="gameList">
+                <span class="combo-main">
+                  <strong id="gameTriggerTitle"></strong>
+                  <span class="combo-sub" id="gameTriggerMeta"></span>
+                </span>
+                <span class="combo-chevron" aria-hidden="true">▾</span>
+              </button>
+              <div class="combo-panel" id="gamePanel" hidden>
+                <input type="search" class="combo-search" id="gameSearch" placeholder="Rechercher un joueur, un lieu…"
+                  autocomplete="off" aria-controls="gameList" aria-autocomplete="list">
+                <ul class="combo-list" id="gameList" role="listbox" aria-labelledby="gamePickerLabel"></ul>
+              </div>
+            </div>
+          </div>
           <div class="game-info">
             <h3 id="gameTitle"></h3>
             <p class="meta" id="gameMeta"></p>
@@ -1000,7 +1132,10 @@
     document.documentElement.lang = "fr";
 
     /* ============================================================
-       CONTENT TO EDIT. Games and problem live here.
+       CONTENT TO EDIT.
+       - Parties : games.pgn (puis node scripts/build-games.mjs)
+         ou directement games.js
+       - Problème : ci-dessous
        ============================================================ */
 
     // Problem of the week: fen = position, statement = question, solution = answer.
@@ -1009,25 +1144,6 @@
       statement: "Les Blancs jouent et font mat en 3 coups.",
       solution: "1. Rh3 ! b3 2. Rh1! gxh1+ 3. Rxh1=Q#"
     };
-
-    // Games: short = label on the button, pgn = the moves only (copy from Lichess or ChessBase).
-    const GAMES = [
-      {
-        id: "opera", short: "L'Opéra", title: "Morphy – Duc de Brunswick et comte Isouard", place: "Paris, 1858",
-        result: "Mat au 17e coup, les Blancs gagnent.",
-        pgn: "1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0"
-      },
-      {
-        id: "immortelle", short: "L'Immortelle", title: "Anderssen – Kieseritzky", place: "Londres, 1851",
-        result: "Mat au 23e coup, les Blancs gagnent.",
-        pgn: "1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0"
-      },
-      {
-        id: "wijk", short: "Wijk aan Zee", title: "Kasparov – Topalov", place: "Wijk aan Zee, 1999",
-        result: "Les Blancs gagnent au 44e coup.",
-        pgn: "1. e4 d6 2. d4 Nf6 3. Nc3 g6 4. Be3 Bg7 5. Qd2 c6 6. f3 b5 7. Nge2 Nbd7 8. Bh6 Bxh6 9. Qxh6 Bb7 10. a3 e5 11. O-O-O Qe7 12. Kb1 a6 13. Nc1 O-O-O 14. Nb3 exd4 15. Rxd4 c5 16. Rd1 Nb6 17. g3 Kb8 18. Na5 Ba8 19. Bh3 d5 20. Qf4+ Ka7 21. Rhe1 d4 22. Nd5 Nbxd5 23. exd5 Qd6 24. Rxd4 cxd4 25. Re7+ Kb6 26. Qxd4+ Kxa5 27. b4+ Ka4 28. Qc3 Qxd5 29. Ra7 Bb7 30. Rxb7 Qc4 31. Qxf6 Kxa3 32. Qxa6+ Kxb4 33. c3+ Kxc3 34. Qa1+ Kd2 35. Qb2+ Kd1 36. Bf1 Rd2 37. Rd7 Rxd7 38. Bxc4 bxc4 39. Qxh8 Rd3 40. Qa8 c3 41. Qa4+ Ke1 42. f4 f5 43. Kc1 Rd2 44. Qa7 1-0"
-      }
-    ];
 
     /* ============================================================
        Page code. Nothing to edit below.
@@ -1112,7 +1228,7 @@
 
       function build(pgn) {
         var g = new Chess();
-        if (!g.load_pgn(pgn)) return null;
+        if (!g.load_pgn(pgn, { sloppy: true })) return null;
         var hist = g.history({ verbose: true });
         var c = new Chess();
         var pos = [{ b: c.board(), from: null, to: null }];
@@ -1149,6 +1265,8 @@
         state.pos = b.pos; state.moves = b.moves; state.game = game;
         document.getElementById("gameTitle").textContent = game.title;
         document.getElementById("gameMeta").textContent = game.place;
+        document.getElementById("gameTriggerTitle").textContent = game.short;
+        document.getElementById("gameTriggerMeta").textContent = game.title + " · " + game.place;
         movesEl.innerHTML = "";
         b.moves.forEach(function (san, k) {
           if (k % 2 === 0) { var no = document.createElement("span"); no.className = "no"; no.textContent = (k / 2 + 1) + "."; movesEl.appendChild(no); }
@@ -1157,21 +1275,129 @@
           btn.addEventListener("click", function () { go(k + 1); });
           movesEl.appendChild(btn);
         });
-        Array.prototype.forEach.call(document.querySelectorAll(".pick"), function (p) {
-          p.setAttribute("aria-pressed", String(p.dataset.id === game.id));
+        Array.prototype.forEach.call(listEl.querySelectorAll(".combo-option"), function (opt) {
+          opt.setAttribute("aria-selected", String(opt.dataset.id === game.id));
         });
         go(0);
       }
 
-      var picker = document.getElementById("picker");
-      GAMES.forEach(function (g) {
-        var b = document.createElement("button");
-        b.type = "button"; b.className = "pick"; b.dataset.id = g.id;
-        var s = document.createElement("strong"); s.textContent = g.short;
-        var m = document.createElement("span"); m.textContent = g.place;
-        b.appendChild(s); b.appendChild(m);
-        b.addEventListener("click", function () { load(g); });
-        picker.appendChild(b);
+      var games = (typeof GAMES !== "undefined" && GAMES && GAMES.length) ? GAMES.slice() : [];
+      games.sort(function (a, b) {
+        return a.short.localeCompare(b.short, "fr", { sensitivity: "base" });
+      });
+
+      var trigger = document.getElementById("gameTrigger");
+      var panel = document.getElementById("gamePanel");
+      var searchEl = document.getElementById("gameSearch");
+      var listEl = document.getElementById("gameList");
+      var comboOpen = false;
+      var activeIdx = -1;
+      var visible = [];
+
+      function setOpen(open) {
+        comboOpen = open;
+        panel.hidden = !open;
+        trigger.setAttribute("aria-expanded", String(open));
+        if (open) {
+          searchEl.value = "";
+          renderList("");
+          setTimeout(function () { searchEl.focus(); }, 0);
+        } else {
+          activeIdx = -1;
+        }
+      }
+
+      function norm(s) {
+        return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      }
+
+      function renderList(query) {
+        var q = norm(query.trim());
+        listEl.innerHTML = "";
+        visible = games.filter(function (g) {
+          if (!q) return true;
+          var hay = norm([g.short, g.title, g.place].join(" "));
+          return hay.indexOf(q) !== -1;
+        });
+        if (!visible.length) {
+          var empty = document.createElement("li");
+          empty.className = "combo-empty";
+          empty.textContent = "Aucune partie trouvée.";
+          listEl.appendChild(empty);
+          activeIdx = -1;
+          return;
+        }
+        visible.forEach(function (g, i) {
+          var li = document.createElement("li");
+          li.setAttribute("role", "presentation");
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "combo-option";
+          btn.setAttribute("role", "option");
+          btn.id = "game-opt-" + g.id;
+          btn.dataset.id = g.id;
+          btn.dataset.index = String(i);
+          btn.setAttribute("aria-selected", String(state.game && state.game.id === g.id));
+          var s = document.createElement("strong");
+          s.textContent = g.short;
+          var m = document.createElement("span");
+          m.textContent = g.title + " · " + g.place;
+          btn.appendChild(s);
+          btn.appendChild(m);
+          btn.addEventListener("click", function () {
+            load(g);
+            setOpen(false);
+            trigger.focus();
+          });
+          li.appendChild(btn);
+          listEl.appendChild(li);
+        });
+        activeIdx = Math.max(0, visible.findIndex(function (g) {
+          return state.game && g.id === state.game.id;
+        }));
+        syncActive();
+      }
+
+      function syncActive() {
+        var opts = listEl.querySelectorAll(".combo-option");
+        Array.prototype.forEach.call(opts, function (opt, i) {
+          opt.setAttribute("data-active", String(i === activeIdx));
+          if (i === activeIdx) {
+            trigger.setAttribute("aria-activedescendant", opt.id);
+            opt.scrollIntoView({ block: "nearest" });
+          }
+        });
+      }
+
+      trigger.addEventListener("click", function () { setOpen(!comboOpen); });
+      searchEl.addEventListener("input", function () { renderList(searchEl.value); });
+      searchEl.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowDown") {
+          if (!visible.length) return;
+          activeIdx = (activeIdx + 1) % visible.length;
+          syncActive();
+          e.preventDefault();
+        } else if (e.key === "ArrowUp") {
+          if (!visible.length) return;
+          activeIdx = (activeIdx - 1 + visible.length) % visible.length;
+          syncActive();
+          e.preventDefault();
+        } else if (e.key === "Enter") {
+          if (activeIdx >= 0 && visible[activeIdx]) {
+            load(visible[activeIdx]);
+            setOpen(false);
+            trigger.focus();
+          }
+          e.preventDefault();
+        } else if (e.key === "Escape") {
+          setOpen(false);
+          trigger.focus();
+          e.preventDefault();
+        }
+      });
+      document.addEventListener("click", function (e) {
+        if (!comboOpen) return;
+        if (!document.getElementById("gameCombo").contains(e.target)) setOpen(false);
       });
 
       bStart.addEventListener("click", function () { go(0); });
@@ -1180,13 +1406,19 @@
       bEnd.addEventListener("click", function () { go(state.moves.length); });
       document.addEventListener("keydown", function (e) {
         if (document.getElementById("p-parties").hidden) return;
+        if (comboOpen) return;
         var tag = e.target && e.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
         if (tag === "BUTTON" && e.target.classList.contains("tab")) return;
         if (e.key === "ArrowRight") { go(state.i + 1); e.preventDefault(); }
         else if (e.key === "ArrowLeft") { go(state.i - 1); e.preventDefault(); }
       });
 
-      load(GAMES[0]);
+      if (!games.length) {
+        statusEl.textContent = "Aucune partie n'est disponible.";
+        return;
+      }
+      load(games[0]);
     })();
   </script>
 
